@@ -1,8 +1,8 @@
 from random import sample
 
-HEIGHT = 10
-WIDTH = 10
-FLAGS = 15
+HEIGHT = 16
+WIDTH = 16
+FLAGS = 50
 
 
 def main() -> int:
@@ -15,7 +15,7 @@ def main() -> int:
     print(format_grid(uncovered))
     # x = int(input("X: "))
     # y = int(input("Y: "))
-    x, y = get_input()
+    x, y, flag = get_input()
     while grid[y][x] != 0:
         grid = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
         init_grid(grid, FLAGS)
@@ -24,12 +24,17 @@ def main() -> int:
     # Game Loop
     while True:
         print(format_grid(uncovered))
-        if sum(row.count("▒") for row in uncovered) == FLAGS:
+        if sum(row.count("▒") + row.count('!') for row in uncovered) == FLAGS:
             print("Success!")
             return 0
         # x = int(input("X: "))
         # y = int(input("Y: "))
-        x, y = get_input()
+        x, y, flag = get_input()
+        if flag:
+            uncovered[y][x] = '▒' if uncovered[y][x] == '!' else '!'
+            continue
+        if uncovered[y][x] == '!':
+            continue
         if grid[y][x] == "B":
             print("Fail")
             return 0
@@ -38,20 +43,30 @@ def main() -> int:
 
 
 def get_input():
+    flag = False
     t = input("X or X,Y: ")
+    if len(t) > 0 and t[0] == '!':
+        t = t[1:]
+        flag = True
     if "," in t:
         try:
-            t = [int(v.strip()) for v in t.split(",")]
-            return t[0], t[1]
+            t = [int(v.strip(), 10 if v.strip().isdigit() else 16) for v in t.split(",")]
+            if t[0] >= WIDTH or t[1] >= HEIGHT or t[0] < 0 or t[1] < 0:
+                print("Invalid input.")
+                return get_input()
+            return t[0], t[1], flag
         except (ValueError, IndexError):
             print("Invalid input.")
             return get_input()
     y = input("Y: ")
 
     try:
-        x = int(t.strip())
-        y = int(y.strip())
-        return x, y
+        x = int(t.strip(), 10 if t.strip().isdigit() else 16)
+        y = int(y.strip(), 10 if t.strip().isdigit() else 16)
+        if x >= WIDTH or y >= HEIGHT or x < 0 or y < 0:
+            print("Invalid input.")
+            return get_input()
+        return x, y, flag
     except ValueError:
         print("Invalid input.")
         return get_input()
@@ -63,25 +78,45 @@ def format_grid(grid) -> str:
     """
     content = (
         "   "
-        + "".join(hex(x)[2:].upper() for x in range(WIDTH))
+        + " ".join(hex(x)[2:].upper() for x in range(WIDTH))
         + "\n"
         + " ┏"
-        + ("━" * (WIDTH + 2))
+        + ("━" * (WIDTH * 2 + 1))
         + "┓\n"
     )
     y = 0
     for row in grid:
-        content += f"{y}┃ "
+        content += f"{hex(y)[2:].upper()}┃ "
         for cell in row:
-            content += str(cell) + ""
-        content += f" ┃{y}\n"
+            match cell:
+                case '!':
+                    content += "\033[91m!\033[0m "
+                case 1:
+                    content += "\033[92m1\033[0m "
+                case 2:
+                    content += "\033[96m2\033[0m "
+                case 3:
+                    content += "\033[94m3\033[0m "
+                case 4:
+                    content += "\033[93m4\033[0m "
+                case 5:
+                    content += "\033[93m5\033[0m "
+                case 6:
+                    content += "\033[93m6\033[0m "
+                case 7:
+                    content += "\033[93m7\033[0m "
+                case 8:
+                    content += "\033[91m8\033[0m "
+                case _:
+                    content += str(cell) + " "
+        content += f"┃{hex(y)[2:].upper()}\n"
         y += 1
     content += (
         " ┗"
-        + ("━" * (WIDTH + 2))
+        + ("━" * (WIDTH * 2 + 1))
         + "┛\n"
         + "   "
-        + "".join(hex(x)[2:].upper() for x in range(WIDTH))
+        + " ".join(hex(x)[2:].upper() for x in range(WIDTH))
         + "\n"
     )
     return content
