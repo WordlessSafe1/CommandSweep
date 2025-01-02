@@ -13,8 +13,6 @@ def main() -> int:
 
     # First move
     print(format_grid(uncovered))
-    # x = int(input("X: "))
-    # y = int(input("Y: "))
     x, y, flag = get_input()
     while grid[y][x] != 0:
         grid = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
@@ -24,33 +22,47 @@ def main() -> int:
     # Game Loop
     while True:
         print(format_grid(uncovered))
-        if sum(row.count("▒") + row.count('!') for row in uncovered) == FLAGS:
+        if sum(row.count("▒") + row.count("!") for row in uncovered) == FLAGS:
             print("Success!")
             return 0
-        # x = int(input("X: "))
-        # y = int(input("Y: "))
         x, y, flag = get_input()
         if flag:
-            uncovered[y][x] = '▒' if uncovered[y][x] == '!' else '!'
+            if str(uncovered[y][x]) not in "▒!":
+                continue
+            uncovered[y][x] = "▒" if uncovered[y][x] == "!" else "!"
             continue
-        if uncovered[y][x] == '!':
+        if uncovered[y][x] == "!":
             continue
-        if grid[y][x] == "B":
+        if grid[y][x] == "*":
+            finish_grid(grid, uncovered)
+            print(format_grid(uncovered))
             print("Fail")
             return 0
         uncover_cell(grid, uncovered, x, y)
     return 0
 
 
+def finish_grid(grid, field):
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            if field[y][x] == "▒" or (
+                field[y][x] == "!" and grid[y][x] != "*"
+            ):
+                field[y][x] = "\033[48;5;238m" + str(grid[y][x])
+
+
 def get_input():
     flag = False
     t = input("X or X,Y: ")
-    if len(t) > 0 and t[0] == '!':
+    if len(t) > 0 and t[0] == "!":
         t = t[1:]
         flag = True
     if "," in t:
         try:
-            t = [int(v.strip(), 10 if v.strip().isdigit() else 16) for v in t.split(",")]
+            t = [
+                int(v.strip(), 10 if v.strip().isdigit() else 16)
+                for v in t.split(",")
+            ]
             if t[0] >= WIDTH or t[1] >= HEIGHT or t[0] < 0 or t[1] < 0:
                 print("Invalid input.")
                 return get_input()
@@ -76,39 +88,40 @@ def format_grid(grid) -> str:
     """
     Generate a string representation of the grid.
     """
-    content = (
-        "   "
-        + " ".join(hex(x)[2:].upper() for x in range(WIDTH))
-        + "\n"
-        + " ┏"
-        + ("━" * (WIDTH * 2 + 1))
-        + "┓\n"
-    )
+    marks = 0
+    content = ""
     y = 0
     for row in grid:
         content += f"{hex(y)[2:].upper()}┃ "
         for cell in row:
-            match cell:
-                case '!':
-                    content += "\033[91m!\033[0m "
-                case 1:
-                    content += "\033[92m1\033[0m "
-                case 2:
-                    content += "\033[96m2\033[0m "
-                case 3:
-                    content += "\033[94m3\033[0m "
-                case 4:
-                    content += "\033[93m4\033[0m "
-                case 5:
-                    content += "\033[93m5\033[0m "
-                case 6:
-                    content += "\033[93m6\033[0m "
-                case 7:
-                    content += "\033[93m7\033[0m "
-                case 8:
-                    content += "\033[91m8\033[0m "
+            if isinstance(cell, str) and len(cell) != 1:
+                print()
+            match (
+                str(cell)
+                if (not isinstance(cell, str)) or len(cell) == 1
+                else cell[cell.find("m") + 1]
+            ):
+                case "!" | "*":
+                    content += f"\033[91m{cell}\033[0m "
+                    marks += 1
+                case "1":
+                    content += f"\033[92m{cell}\033[0m "
+                case "2":
+                    content += f"\033[96m{cell}\033[0m "
+                case "3":
+                    content += f"\033[94m{cell}\033[0m "
+                case "4":
+                    content += f"\033[93m{cell}\033[0m "
+                case "5":
+                    content += f"\033[93m{cell}\033[0m "
+                case "6":
+                    content += f"\033[93m{cell}\033[0m "
+                case "7":
+                    content += f"\033[93m{cell}\033[0m "
+                case "8":
+                    content += f"\033[91m{cell}\033[0m "
                 case _:
-                    content += str(cell) + " "
+                    content += str(cell) + "\033[49m" + " "
         content += f"┃{hex(y)[2:].upper()}\n"
         y += 1
     content += (
@@ -118,6 +131,19 @@ def format_grid(grid) -> str:
         + "   "
         + " ".join(hex(x)[2:].upper() for x in range(WIDTH))
         + "\n"
+    )
+    content = (
+        "   "
+        + " ".join(hex(x)[2:].upper() for x in range(WIDTH))
+        + "   "
+        + str(FLAGS - marks)
+        + " / "
+        + str(FLAGS)
+        + "\n"
+        + " ┏"
+        + ("━" * (WIDTH * 2 + 1))
+        + "┓\n"
+        + content
     )
     return content
 
@@ -129,7 +155,7 @@ def init_grid(grid, flags):
     """
     tags = sample(range(HEIGHT * WIDTH), flags)
     for flag in tags:
-        grid[flag // WIDTH][flag % WIDTH] = "B"
+        grid[flag // WIDTH][flag % WIDTH] = "*"
         for x, y in surrounding_cells(flag % WIDTH, flag // WIDTH):
             if isinstance(grid[y][x], int):
                 grid[y][x] += 1
