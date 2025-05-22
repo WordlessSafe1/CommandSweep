@@ -1,3 +1,4 @@
+from typing import Literal
 from random import sample
 
 HEIGHT = 16
@@ -14,6 +15,9 @@ def main() -> int:
     # First move
     print(format_grid(uncovered))
     x, y, flag = get_input()
+    if isinstance(x, list) or isinstance(y, list):
+        print("You can't use a range for the first move. Why? Because.")
+        x, y, flag = get_input()
     while grid[y][x] != 0:
         grid = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
         init_grid(grid, FLAGS)
@@ -31,15 +35,30 @@ def main() -> int:
                 continue
             uncovered[y][x] = "▒" if uncovered[y][x] == "!" else "!"
             continue
-        if uncovered[y][x] == "!":
+        if isinstance(x, list):
+            for i in range(len(x)):
+                if not handle_guess(grid, uncovered, x[i], y[i]):
+                    return end_game(grid, uncovered)
             continue
-        if grid[y][x] == "*":
-            finish_grid(grid, uncovered)
-            print(format_grid(uncovered))
-            print("Fail")
-            return 0
-        uncover_cell(grid, uncovered, x, y)
+        if not handle_guess(grid, uncovered, x, y):
+            return end_game(grid, uncovered)
     return 0
+
+
+def end_game(grid, uncovered) -> Literal[0]:
+    finish_grid(grid, uncovered)
+    print(format_grid(uncovered))
+    print("Fail")
+    return 0
+
+
+def handle_guess(grid, uncovered, x, y):
+    if uncovered[y][x] == "!":
+        return True
+    if grid[y][x] == "*":
+        return False
+    uncover_cell(grid, uncovered, x, y)
+    return True
 
 
 def finish_grid(grid, field):
@@ -53,10 +72,39 @@ def finish_grid(grid, field):
 
 def get_input():
     flag = False
-    t = input("X or X,Y: ")
+    t = input("'X', 'X,Y', or 'X1,Y1:X2,Y2': ")
     if len(t) > 0 and t[0] == "!":
         t = t[1:]
         flag = True
+    if ":" in t:
+        if flag:
+            print("Can't flag a range!")
+            return get_input()
+        try:
+            ts = [v.strip() for v in t.split(":")]
+            xs = []
+            ys = []
+            for t in ts:
+                t = [int(v.strip(), 16) for v in t.split(",")]
+                if t[0] >= WIDTH or t[1] >= HEIGHT or t[0] < 0 or t[1] < 0:
+                    print("Invalid input.")
+                    return get_input()
+                xs.append(t[0])
+                ys.append(t[1])
+            out_xs = []
+            out_ys = []
+            if xs[1] < xs[0]:
+                xs.reverse()
+            if ys[1] < ys[0]:
+                ys.reverse()
+            for x in range(xs[0], xs[1] + 1):
+                for y in range(ys[0], ys[1] + 1):
+                    out_xs.append(x)
+                    out_ys.append(y)
+            return out_xs, out_ys, False
+        except (ValueError, IndexError):
+            print("Invalid input.")
+            return get_input()
     if "," in t:
         try:
             t = [
